@@ -338,12 +338,21 @@ function onRequestGet6() {
 __name(onRequestGet6, "onRequestGet");
 
 // _middleware.js
-var OPEN_AT_TOP_RUNTIME = `(()=>{if(location.hash)return;if("scrollRestoration" in history)history.scrollRestoration="manual";const reset=()=>{if(location.hash)return;const root=document.documentElement;const previous=root.style.scrollBehavior;root.style.scrollBehavior="auto";scrollTo(0,0);root.style.scrollBehavior=previous};reset();addEventListener("pageshow",reset,{once:true});requestAnimationFrame(()=>requestAnimationFrame(reset));setTimeout(reset,400)})();`;
+var OPEN_AT_TOP_RUNTIME = `(()=>{const root=document.documentElement;if(location.hash){root.classList.remove("startup-lock");return}if("scrollRestoration" in history)history.scrollRestoration="manual";const previous=root.style.scrollBehavior;const reset=()=>{root.style.scrollBehavior="auto";scrollTo(0,0)};const unlock=()=>{reset();root.classList.remove("startup-lock");requestAnimationFrame(()=>{reset();requestAnimationFrame(()=>{root.style.scrollBehavior=previous})})};reset();addEventListener("pageshow",()=>{reset();requestAnimationFrame(reset)});const intro=document.querySelector(".site-intro");if(intro)intro.addEventListener("animationend",event=>{if(event.target===intro)unlock()},{once:true});else unlock();setTimeout(unlock,2400)})();`;
 async function onRequest(context) {
   const response = await context.next();
   const pathname = new URL(context.request.url).pathname;
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/") || !response.headers.get("Content-Type")?.includes("text/html")) return response;
-  return new HTMLRewriter().on("body", {
+  return new HTMLRewriter().on("html", {
+    element(element) {
+      const classes = element.getAttribute("class") || "";
+      element.setAttribute("class", `${classes} startup-lock`.trim());
+    }
+  }).on("head", {
+    element(element) {
+      element.append("<style>html.startup-lock{overflow:hidden!important;scroll-behavior:auto!important}html.startup-lock body{overflow:hidden!important}</style>", { html: true });
+    }
+  }).on("body", {
     element(element) {
       element.append(`<script>${OPEN_AT_TOP_RUNTIME}<\/script><script>${PUBLIC_RUNTIME}<\/script>`, { html: true });
     }
@@ -351,7 +360,7 @@ async function onRequest(context) {
 }
 __name(onRequest, "onRequest");
 
-// ../.wrangler/tmp/pages-qAqdth/functionsRoutes-0.9902241150791282.mjs
+// ../.wrangler/tmp/pages-jwr8aj/functionsRoutes-0.5419851706351926.mjs
 var routes = [
   {
     routePath: "/api/photos/:id",
